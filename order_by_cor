@@ -1,0 +1,52 @@
+
+# Returns a vector containing column references to the dataframe, in order of decreasing absolute value of the correlation coefficient.
+# Greedy algorithm, so starts with the columns with the highest abs(correlation) and incrementally adds columns in order of highest abs(correlation).
+# Currently, there is no set procedure for how to deal with ties (for example, with the first two variables that are selected into the vector). Therefore, the outputted vector may not necessarily be the "best" one.
+order_by_cor <- function(input) {
+
+  # Create a matrix with the variables in the input matrix, sorted in order of decreasing correlation
+  ## This section taken from:
+  ## Darren Cook
+  ## https://stackoverflow.com/questions/7074246/show-correlations-as-an-ordered-list-not-as-a-large-matrix
+  ## Posted on 8/17/11, Taken from site on 11/4/2018
+  ####### BEGIN
+  z <- cor(input)
+  z[lower.tri(z,diag=TRUE)]=NA
+  z=as.data.frame(as.table(z))
+  z=na.omit(z)
+  z=z[order(-abs(z$Freq)),]
+  ####### END
+  
+  # Convert the variable names to column indices
+  z[,1] <- match(z[,1],names(input))
+  z[,2] <- match(z[,2],names(input))
+  
+  # Copy in the references to the first two variables (that have the highest abs(correlation))
+  vars <- vector("numeric", ncol(input))
+  vars[1] <- z[1,1]
+  vars[2] <- z[1,2]
+  remaining_rows <- z[-c(which(z[,1]==vars[1]), which(z[,2]==vars[1])), ]
+  next_var <- vars[2]
+  i <- 3
+  
+  # Copy in all of the remaining columns, in order from highest to lowest abs(correlation)
+  while(nrow(remaining_rows)>1){
+    best_pair_1 <- match(next_var, remaining_rows[,1])
+    best_pair_2 <- match(next_var, remaining_rows[,2])
+    if(is.na(best_pair_2))
+      vars[i] <- remaining_rows[best_pair_1, 2]
+    else if(is.na(best_pair_1))
+      vars[i] <- remaining_rows[best_pair_2, 1]
+    else if(best_pair_1 < best_pair_2)
+      vars[i] <- remaining_rows[best_pair_1, 2]
+    else
+      vars[i] <- remaining_rows[best_pair_2, 1]
+    remaining_rows <- remaining_rows[-c(which(remaining_rows[,1]==next_var), which(remaining_rows[,2]==next_var)), ]
+    next_var <- vars[i]
+    i <- i + 1
+  }
+  vars[length(vars)] <- ifelse(remaining_rows[,1]==next_var, remaining_rows[,2], remaining_rows[,1])
+  
+  vars
+}
+
